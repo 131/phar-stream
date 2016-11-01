@@ -1,81 +1,181 @@
 "use strict";
 
 const fs = require('fs');
+const bl = require('bl')
+const PassThrough = require('stream').PassThrough;
+const Writable    = require('stream').Writable;
+
+const co    = require('co');
+const defer = require('nyks/promise/defer');
+const eachSeries   = require('async-co/eachSeries');
+const streamsearch = require('streamsearch');
+const noop = function () {};
+
+//find halt compiler
+//parse manifest
+//receive files stream
+const END_STUB = "__HALT_COMPILER(); ?>\r\n";
 
 
-module.exports = { extract };
+    //search for a stub in a stream, return a promise
+function search(stream, needle) {
+  var ss = new streamsearch(needle),
+      push = ss.push.bind(ss);
+  ss.maxMatches = 1;
 
-var data = fs.readFileSync(input)
-
-
-define('END_STUB', "__HALT_COMPILER(); ?>\r\n");
-$pos = strpos($data, END_STUB);
-if($pos === false)
-  throw new Exception("No stub found");
-
-
-$pos += strlen(END_STUB); $manifest_start = $pos;
-
-
-//https://github.com/php/php-src/blob/master/ext/phar/phar.c
-
-$len       = unpack("L", substr($data, $pos) )[1]; $pos+=4;
-$files_nb  = unpack("L", substr($data, $pos) )[1]; $pos+=4;
-$version   = unpack("S", substr($data, $pos) )[1]; $pos+=2;
-$flags     = unpack("L", substr($data, $pos) )[1]; $pos+=4;
-$alias_len = unpack("L", substr($data, $pos) )[1]; $pos+=4;
-$alias     = substr($data, $pos, $alias_len); $pos += $alias_len;
-$meta_len  = unpack("L", substr($data, $pos) )[1]; $pos+=4;
-$metadata  = substr($data, $pos, $meta_len); $pos += $meta_len;
-
-
-$payload_start = $manifest_start + $len;
-
-file_put_contents("da", $remaining);
-
-var_dump(compact(
-  'len',
-  'files_nb',
-  'version',
-  'flags',
-  'alias_len',
-  'alias',
-  'meta_len',
-  'metadata'
-));
-
-
-$entries = [];
-
-//https://github.com/php/php-src/blob/master/ext/phar/phar.c#L1059
-for($manifest_index = 0; $manifest_index <$files_nb; ++$manifest_index) {
-  $entry_nlen  = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-  $entry_name  = substr($data, $pos, $entry_nlen); $pos += $entry_nlen;
-  $entry_size  = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-  $entry_mtime  = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-  $entry_csize = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-
-
-  $entry_crc32 = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-  $entry_flags = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-
-  $entry_mlen = unpack("L", substr($data, $pos))[1]; $pos+= 4;
-  $entry_meta = substr($data, $pos, $entry_mlen); $pos += $entry_mlen;
-
-  $entries [] = compact('entry_nlen', 'entry_name', 'entry_size', 'entry_mtime', 'entry_csize', 'entry_mlen', 'entry_meta');
-
+  var defered = defer();
+  stream.on("data", push);
+  ss.on("info", function(isMatch, data, start, end){
+    if(!isMatch)
+      return;
+    stream.removeListener("data", push);
+    defered.resolve(end);
+  });
+  return defered;
 }
 
 
-$pos          = $payload_start; //already here ...
 
-$payload_flag = unpack("L", substr($data, $pos))[1]; $pos+= 4; //????
-
-foreach($entries as $entry_index => $entry) {
-  $entry_body  = substr($data, $pos, $entry["entry_csize"]); $pos+= $entry["entry_csize"];
-  //$entries[$entry_index] = array_merge($entries[$entry_index], compact('entry_flags', 'entry_body'));
-  file_put_contents("{$entry['entry_name']}", $entry_body);
+class Source extends PassThrough {
+  constructor(self, offset) {
+    super();
+  }
 }
 
 
-print_r($entries);
+class Extract extends Writable {
+
+  constructor() {
+    super();
+    co(this.run.bind(this)).catch(function(err){
+      console.log(err.stack);
+    });
+  }
+
+
+    //make sure internal buffer contains AT LEAST size buffer
+  need(size) {
+    var defered = defer();
+    this._missing = size;
+
+    var hole =  () => {
+      if(this._buffer.length < size)
+        return;
+      this.removeListener('data', hole);
+      this._missing = 0;
+      defered.resolve();
+    };
+
+    this.on('data', hole); hole();
+    return defered;
+  }
+
+
+  * run() {
+    var body = this._buffer = bl();
+
+    this._missing = Infinity; //we need a lot
+
+    var pos = (yield search(this, END_STUB)) + END_STUB.length;
+    var mlen  = this._buffer.readUInt32LE(pos);
+    this._buffer.consume(pos + 4);
+    yield this.need(mlen); //waiting until at least mlen bytes are available
+
+    var body = this._buffer.slice(0, mlen); pos = 0;
+    this._buffer.consume(mlen);
+
+    function readInt() {
+      var ret = body.readUInt32LE(pos); pos+= 4;
+      return ret;
+    }
+
+    function readString() {
+      var len = readInt(), ret = body.slice(pos, pos + len); pos += len;
+      return "" + ret;
+    }
+
+
+    var files_nb  = readInt();
+    var version   = body.readUInt16LE(pos); pos+= 2;
+    var flags     = readInt()
+    var alias     = readString()
+    var metadata  = readString();
+
+    //console.log({files_nb, version, flags, alias, metadata});
+
+
+    var entries = [], entry;
+
+    //https://github.com/php/php-src/blob/master/ext/phar/phar.c#L1059
+    for(var manifest_index = 0; manifest_index < files_nb; ++manifest_index) {
+      entry = {
+        'entry_name' : readString(),
+        'entry_size' : readInt(),
+        'entry_mtime' : readInt(),
+        'entry_csize' : readInt(),
+        'entry_crc32' : readInt(),
+        'entry_flags' : readInt(),
+        'entry_meta'  : readString(),
+      }
+      entries.push(entry);
+    }
+
+    //the whole manifest has been parsed, let's extract some files
+
+    yield eachSeries(entries, function* (entry) {
+      var stream = this._stream = new Source();
+      var defered = defer();
+
+      this.emit("entry", entry, stream, defered.resolve);
+      this._missing = entry.entry_csize;
+
+      if(this._buffer.length) {
+        var tmp = this._buffer; this._buffer = bl();
+        this._write(tmp.slice(0, tmp.length), undefined, this._cb);
+      }
+
+      yield defered; //wait for the entry to be consumed
+    }, this);
+
+       //last chunk has been wrote, closing extract stream
+    this._cb();
+
+  }
+
+  _write(data, enc, cb) {
+
+    this.emit("data", data);
+
+    var s = this._stream
+    var b = this._buffer
+    var missing = this._missing
+
+      //not enough data, looping
+    if (data.length < this._missing) {
+
+      this._missing -= data.length
+      if (s)
+        return s.write(data, cb)
+
+      b.append(data)
+      return cb()
+    }
+
+    this._cb = cb; 
+    this._missing = 0
+
+    if (data.length > missing && s) {
+      s.end( data.slice(0, missing) );
+      data = data.slice(missing);
+      this._stream = null;
+    }
+
+    b.append(data);
+  }
+}
+
+
+
+
+module.exports = { extract : Extract };
+

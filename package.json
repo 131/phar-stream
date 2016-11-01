@@ -4,11 +4,12 @@
   "description": "php PHAR archive streaming parser for nodejs",
   "main": "index.js",
   "scripts": {
+    "discify": "browserify --node -p discify index.js | discify-reporter --source=disc/graph.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:131/node-phar.git"
+    "url": "git@github.com:131/phar-stream.git"
   },
   "keywords": [
     "php",
@@ -18,7 +19,15 @@
   "author": "Francois Leurent <131.js@cloudyks.org>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/131/node-phar/issues"
+    "url": "https://github.com/131/phar-stream/issues"
   },
-  "homepage": "https://github.com/131/node-phar"
+  "homepage": "https://github.com/131/phar-stream",
+  "dependencies": {
+    "async-co": "^1.5.0",
+    "bl": "^1.1.2",
+    "co": "^4.6.0",
+    "nyks": "^3.6.0",
+    "streamsearch": "^0.1.2"
+  },
+  "devDependencies": {}
 }

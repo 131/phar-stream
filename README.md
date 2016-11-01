@@ -1,10 +1,11 @@
 # phar-stream
 
-phar-stream is a streaming PHP archive phar parser and nothing else. It is streams2 and operates purely using streams which means you can easily extract/parse phar without ever hitting the file system.
+[phar-stream](https://github.com/131/phar-stream) is a streaming **phar** archive ([PHP archive](https://en.wikipedia.org/wiki/PHAR_(file_format))) parser for nodejs. It is streams2 and operates purely using streams which means you can easily extract/parse phar without ever hitting the file system. phar-stream use es6 syntax (& generators) and require node 4+.
 
 ```
 npm install phar-stream
 ```
+
 
 [![Build Status](https://travis-ci.org/131/phar-stream.svg?branch=master)](https://travis-ci.org/131/phar-stream)
 [![Coverage Status](https://coveralls.io/repos/github/131/phar-stream/badge.svg?branch=master)](https://coveralls.io/github/131/phar-stream?branch=master)
@@ -29,7 +30,7 @@ To extract a stream use `phar.extract()` and listen for `extract.on('entry', (he
 
 ``` js
 const phar  = require('phar-stream');
-const extract = phar.extract()
+const extract = new phar.extract()
 
 extract.on('entry', function(header, stream, next) {
   // header is the phar header
@@ -61,9 +62,10 @@ Most of these values can be found by stat'ing a file.
 
 ``` js
 {
-  name: 'path/to/this/entry.txt',
-  size: 1314,        // entry size. defaults to 0
-  mtime: new Date(), // last modified date for entry. defaults to now.
+  entry_name: 'path/to/this/entry.txt',
+  entry_size: 1314,        // entry size. defaults to 0
+  entry_mtime: new Date(), // last modified date for entry
+  entry_crc32: 15151, // entry CRC32 checksum
 }
 ```
 
@@ -73,10 +75,12 @@ Most of these values can be found by stat'ing a file.
 * Get rich or die tryin'
 
 
-# Credits
+# Credits / related
 
 * [131](https://github.com/131) - author
 * [mafintosh' tar-stream](https://github.com/mafintosh/tar-stream) - API inspiration
+* [bl](https://www.npmjs.com/package/bl) Buffer list collector, reader and streamer thingy.
+* [co](https://github.com/tj/co) / [async-co](https://github.com/131/async-co) Generator based control flow
 
 # License
 
