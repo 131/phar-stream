@@ -19,12 +19,16 @@ const END_STUB = "__HALT_COMPILER(); ?>\r\n";
 
     //search for a stub in a stream, return a promise
 function search(stream, needle) {
+
   var ss = new streamsearch(needle),
       push = ss.push.bind(ss);
   ss.maxMatches = 1;
 
   var defered = defer();
   stream.on("data", push);
+
+  stream.once("finish", defered.reject.bind(defered, "No stub found in stream"));
+
   ss.on("info", function(isMatch, data, start, end){
     if(!isMatch)
       return;
@@ -47,9 +51,7 @@ class Extract extends Writable {
 
   constructor() {
     super();
-    co(this.run.bind(this)).catch(function(err){
-      console.log(err.stack);
-    });
+    co(this.run.bind(this)).catch( this.emit.bind(this, 'error') );
   }
 
 
@@ -74,7 +76,8 @@ class Extract extends Writable {
   * run() {
     var body = this._buffer = bl();
 
-    this._missing = Infinity; //we need a lot
+    this._missing = 1 << 10 << 10; //1MB max stub size (arbitrary)
+
 
     var pos = (yield search(this, END_STUB)) + END_STUB.length;
     var mlen  = this._buffer.readUInt32LE(pos);
