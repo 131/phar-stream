@@ -6,4 +6,4 @@ after_script:
 addons:
   apt:
     packages:
-      - php5
+      - php5-cli
