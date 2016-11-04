@@ -5,7 +5,5 @@ after_script:
   - npm run coveralls
 addons:
   apt:
-    sources:
-      - ubuntu-toolchain-r-test
     packages:
       - php5
