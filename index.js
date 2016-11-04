@@ -6,15 +6,16 @@ const PassThrough = require('stream').PassThrough;
 const Writable    = require('stream').Writable;
 
 const co    = require('co');
-const defer = require('nyks/promise/defer');
+const defer  = require('nyks/promise/defer');
+const detach = require('nyks/function/detach');
+
 const eachSeries   = require('async-co/eachSeries');
 const streamsearch = require('streamsearch');
-const noop = function () {};
 
 //find halt compiler
 //parse manifest
 //receive files stream
-const END_STUB = "__HALT_COMPILER(); ?>\r\n";
+const END_STUB = "__HALT_COMPILER(); ?>";
 
 
     //search for a stub in a stream, return a promise
@@ -27,13 +28,21 @@ function search(stream, needle) {
   var defered = defer();
   stream.on("data", push);
 
-  stream.once("finish", defered.reject.bind(defered, "No stub found in stream"));
+  stream.once("finish", function(){
+    defered.reject("No stub found in stream")
+  });
+
+  var pos = 0;
 
   ss.on("info", function(isMatch, data, start, end){
+    if(data)
+      pos += end - start;
+
     if(!isMatch)
       return;
+
     stream.removeListener("data", push);
-    defered.resolve(end);
+    defered.resolve(pos);
   });
   return defered;
 }
@@ -51,7 +60,8 @@ class Extract extends Writable {
 
   constructor() {
     super();
-    co(this.run.bind(this)).catch( this.emit.bind(this, 'error') );
+      //make sure to detach as co catch errors
+    co(this.run.bind(this)).catch(detach(this.emit, this, 'error'));
   }
 
 
@@ -78,9 +88,14 @@ class Extract extends Writable {
 
     this._missing = 1 << 10 << 10; //1MB max stub size (arbitrary)
 
-
     var pos = (yield search(this, END_STUB)) + END_STUB.length;
+
+    var p0 = this._buffer.get(pos), p1 = this._buffer.get(pos + 1);
+    if(p0 == 13 && p1 == 10) pos+=2;
+    if(p0 == 10) pos+=1;
+
     var mlen  = this._buffer.readUInt32LE(pos);
+
     this._buffer.consume(pos + 4);
     yield this.need(mlen); //waiting until at least mlen bytes are available
 
@@ -143,6 +158,8 @@ class Extract extends Writable {
        //last chunk has been wrote, closing extract stream
     this._cb();
 
+      //beware emit is sync, and co might catch
+    detach(this.emit, this)("extracted");
   }
 
   _write(data, enc, cb) {

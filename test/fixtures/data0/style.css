@@ -1,0 +1,39 @@
+html,body{
+  margin:0px;
+  padding:0px;
+}
+
+#container {
+  background-color:#F5CC70;
+  width:640px;
+  height:480px;
+  display:block;
+}
+
+
+#drawing {
+    position: absolute;
+}
+
+#drawing.animate {
+  animation-name: example;
+  animation-duration: 4s;
+  -webkit-animation-name: example;
+  -webkit-animation-duration: 4s;
+}
+
+@keyframes example {
+    0%   {left:0px; top:0px;}
+    25%  {left:200px; top:0px;}
+    50%  {left:200px; top:200px;}
+    75%  {left:0px; top:200px;}
+    100% {left:0px; top:0px;}
+}
+
+@-webkit-keyframes example {
+    0%   {left:0px; top:0px;}
+    25%  {left:200px; top:0px;}
+    50%  {left:200px; top:200px;}
+    75%  {left:0px; top:200px;}
+    100% {left:0px; top:0px;}
+}

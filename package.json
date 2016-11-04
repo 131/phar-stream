@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "discify": "browserify --node -p discify index.js | discify-reporter --source=disc/graph.json",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "mocha": "node node_modules/mocha/bin/_mocha",
+    "test": "node node_modules/istanbul/lib/cli.js cover --report text-summary --report html --report lcov  node_modules/mocha/bin/_mocha",
+    "coveralls": "npm install coveralls && node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info"
   },
   "repository": {
     "type": "git",
@@ -26,8 +28,12 @@
     "async-co": "^1.5.0",
     "bl": "^1.1.2",
     "co": "^4.6.0",
-    "nyks": "^3.6.0",
+    "nyks": "^3.6.2",
     "streamsearch": "^0.1.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "istanbul": "~0.3.18",
+    "mocha": "^2.2.5"
+  }
 }
