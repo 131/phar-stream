@@ -51,7 +51,7 @@ function phpPhar(code, chain){
     unset($phar);
   `;
 
-  var child = cp.spawn("php");
+  var child = cp.spawn("php", ["-dphar.readonly=0"]);
   child.stdin.end(code);
   child.stderr.pipe(process.stderr);
 
