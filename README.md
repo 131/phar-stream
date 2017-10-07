@@ -80,7 +80,6 @@ Most of these values can be found by stat'ing a file.
 * [131](https://github.com/131) - author
 * [mafintosh' tar-stream](https://github.com/mafintosh/tar-stream) - API inspiration
 * [bl](https://www.npmjs.com/package/bl) Buffer list collector, reader and streamer thingy.
-* [co](https://github.com/tj/co) / [async-co](https://github.com/131/async-co) Generator based control flow
 
 # License
 

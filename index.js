@@ -5,11 +5,9 @@ const bl = require('bl')
 const PassThrough = require('stream').PassThrough;
 const Writable    = require('stream').Writable;
 
-const co    = require('co');
 const defer  = require('nyks/promise/defer');
 const detach = require('nyks/function/detach');
 
-const eachSeries   = require('async-co/eachSeries');
 const streamsearch = require('streamsearch');
 
 //find halt compiler
@@ -60,8 +58,7 @@ class Extract extends Writable {
 
   constructor() {
     super();
-      //make sure to detach as co catch errors
-    co(this.run.bind(this)).catch(detach(this.emit, this, 'error'));
+    this.run().catch(detach(this.emit, this, 'error'));
   }
 
 
@@ -83,12 +80,12 @@ class Extract extends Writable {
   }
 
 
-  * run() {
+  async run() {
     var body = this._buffer = bl();
 
     this._missing = 1 << 10 << 10; //1MB max stub size (arbitrary)
 
-    var pos = (yield search(this, END_STUB)) + END_STUB.length;
+    var pos = (await search(this, END_STUB)) + END_STUB.length;
 
     var p0 = this._buffer.get(pos), p1 = this._buffer.get(pos + 1);
     if(p0 == 13 && p1 == 10) pos+=2;
@@ -97,7 +94,7 @@ class Extract extends Writable {
     var mlen  = this._buffer.readUInt32LE(pos);
 
     this._buffer.consume(pos + 4);
-    yield this.need(mlen); //waiting until at least mlen bytes are available
+    await this.need(mlen); //waiting until at least mlen bytes are available
 
     var body = this._buffer.slice(0, mlen); pos = 0;
     this._buffer.consume(mlen);
@@ -140,7 +137,7 @@ class Extract extends Writable {
 
     //the whole manifest has been parsed, let's extract some files
 
-    yield eachSeries(entries, function* (entry) {
+    for(entry of entries) {
       var stream = this._stream = new Source();
       var defered = defer();
 
@@ -152,13 +149,12 @@ class Extract extends Writable {
         this._write(tmp.slice(0, tmp.length), undefined, this._cb);
       }
 
-      yield defered; //wait for the entry to be consumed
-    }, this);
+      await defered; //wait for the entry to be consumed
+    }
 
        //last chunk has been wrote, closing extract stream
     this._cb();
 
-      //beware emit is sync, and co might catch
     detach(this.emit, this)("extracted");
   }
 

@@ -25,9 +25,7 @@
   },
   "homepage": "https://github.com/131/phar-stream",
   "dependencies": {
-    "async-co": "^1.5.0",
     "bl": "^1.1.2",
-    "co": "^4.6.0",
     "nyks": "^3.6.2",
     "streamsearch": "^0.1.2"
   },
