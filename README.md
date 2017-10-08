@@ -1,6 +1,6 @@
 # phar-stream
 
-[phar-stream](https://github.com/131/phar-stream) is a streaming **phar** archive ([PHP archive](https://en.wikipedia.org/wiki/PHAR_(file_format))) parser for nodejs. It is streams2 and operates purely using streams which means you can easily extract/parse phar without ever hitting the file system. phar-stream use es6 syntax (& generators) and require node 4+.
+[phar-stream](https://github.com/131/phar-stream) is a streaming **phar** archive ([PHP archive](https://en.wikipedia.org/wiki/PHAR_(file_format))) parser for nodejs. It is streams2 and operates purely using streams which means you can easily extract/parse phar without ever hitting the file system. phar-stream use es7 async/await syntax and require node 8+.
 
 ```
 npm install phar-stream
