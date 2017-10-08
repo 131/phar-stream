@@ -14,13 +14,13 @@ const detach     = require('nyks/function/detach');
 function getManifest(archive, chain){
     chain = once(chain);
     //note that an invalid file might throw an error
-
+  
   const extract = new phar.extract()
   extract.on('error', chain); 
 
     var files  = {};
     extract.on('entry', function(header, stream, next) {
-
+      console.log("Wokring on entry", header);
       var output = crypto.createHash('md5')
 
       output.once('readable', function () {
@@ -114,7 +114,7 @@ describe("Testing fixtures", function(){
 
   it("should extract php Composer reference", function(done){
 
-
+    this.timeout(10 * 1000);
     const manifest = require( path.join(__dirname, "fixtures/composer-1.2.2.json") );
 
     var req = https.get("https://getcomposer.org/download/1.2.2/composer.phar", function(archive){
