@@ -153,7 +153,9 @@ class Extract extends Writable {
     }
 
        //last chunk has been wrote, closing extract stream
-    this._cb();
+
+    if(this._cb)
+      this._cb();
 
     detach(this.emit, this)("extracted");
   }
