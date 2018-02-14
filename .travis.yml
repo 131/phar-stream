@@ -7,3 +7,9 @@ addons:
   apt:
     packages:
       - php5-cli
+deploy:
+  provider: npm
+  email: "131.frodon@cloudyks.org"
+  api_key: $NPM_TOKEN 
+  on:
+    tags: true
